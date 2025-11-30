@@ -92,77 +92,114 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
         uploadedFileId = uploadedFile.id;
 
         console.log('Creating assistant and thread for document analysis...');
-        const assistant = await openai.beta.assistants.create({
-            name: 'Document Lecturer',
-            instructions: lectureInstructions,
-            model: gptModel,
-            tools: [{ type: 'file_search' }],
-        });
+        let assistantId = null;
+        let threadId = null;
 
-        const thread = await openai.beta.threads.create();
-
-        await openai.beta.threads.messages.create(thread.id, {
-            role: 'user',
-            content: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד.',
-            attachments: [
-                {
-                    file_id: uploadedFile.id,
-                    tools: [{ type: 'file_search' }],
-                },
-            ],
-        });
-
-        const run = await openai.beta.threads.runs.create(thread.id, {
-            assistant_id: assistant.id,
-        });
-
-        // Wait for the run to complete
-        let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-        while (runStatus.status !== 'completed') {
-            if (runStatus.status === 'failed') {
-                throw new Error('Assistant run failed');
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-        }
-
-        const messages = await openai.beta.threads.messages.list(thread.id);
-        const script = messages.data[0].content[0].text.value;
-
-        if (!script) {
-            throw new Error('OpenAI did not return a Hebrew script.');
-        }
-
-        // Clean up assistant and thread
         try {
-            await openai.beta.assistants.del(assistant.id);
-            await openai.beta.threads.del(thread.id);
-        } catch (cleanupError) {
-            console.error('Failed to cleanup assistant/thread:', cleanupError);
-        }
+            const assistant = await openai.beta.assistants.create({
+                name: 'Document Lecturer',
+                instructions: lectureInstructions,
+                model: gptModel,
+                tools: [{ type: 'file_search' }],
+            });
+            assistantId = assistant.id;
 
-        console.log('Generating audio via TTS API...');
-        const mp3 = await openai.audio.speech.create({
-            model: 'tts-1',
-            voice: ttsVoice,
-            input: script,
-        });
+            const thread = await openai.beta.threads.create();
+            threadId = thread.id;
 
-        const buffer = Buffer.from(await mp3.arrayBuffer());
-        await fs.promises.writeFile(outputPath, buffer);
+            await openai.beta.threads.messages.create(threadId, {
+                role: 'user',
+                content: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד.',
+                attachments: [
+                    {
+                        file_id: uploadedFile.id,
+                        tools: [{ type: 'file_search' }],
+                    },
+                ],
+            });
 
-        cleanupLocal();
-        if (uploadedFileId) {
-            try {
-                await openai.files.delete(uploadedFileId);
-            } catch (delError) {
-                console.error('Failed to delete OpenAI file:', delError);
+            const run = await openai.beta.threads.runs.create(threadId, {
+                assistant_id: assistantId,
+            });
+
+            // Wait for the run to complete
+            let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+            let attempts = 0;
+            const maxAttempts = 120; // 2 minutes timeout
+
+            while (runStatus.status !== 'completed' && attempts < maxAttempts) {
+                if (runStatus.status === 'failed' || runStatus.status === 'cancelled' || runStatus.status === 'expired') {
+                    throw new Error(`Assistant run ${runStatus.status}: ${runStatus.last_error?.message || 'Unknown error'}`);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+                attempts++;
             }
-        }
 
-        // Return download link + script
-        const downloadUrl = `/downloads/${outputFilename}`;
-        res.json({ success: true, downloadUrl, script });
+            if (attempts >= maxAttempts) {
+                throw new Error('Assistant run timed out after 2 minutes');
+            }
+
+            const messages = await openai.beta.threads.messages.list(threadId);
+            const script = messages.data[0].content[0].text.value;
+
+            if (!script) {
+                throw new Error('OpenAI did not return a Hebrew script.');
+            }
+
+            // Clean up assistant and thread
+            if (assistantId) {
+                try {
+                    await openai.beta.assistants.del(assistantId);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup assistant:', cleanupError);
+                }
+            }
+            if (threadId) {
+                try {
+                    await openai.beta.threads.del(threadId);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup thread:', cleanupError);
+                }
+            }
+
+            console.log('Generating audio via TTS API...');
+            const mp3 = await openai.audio.speech.create({
+                model: 'tts-1',
+                voice: ttsVoice,
+                input: script,
+            });
+
+            const buffer = Buffer.from(await mp3.arrayBuffer());
+            await fs.promises.writeFile(outputPath, buffer);
+
+            cleanupLocal();
+            if (uploadedFileId) {
+                try {
+                    await openai.files.delete(uploadedFileId);
+                } catch (delError) {
+                    console.error('Failed to delete OpenAI file:', delError);
+                }
+            }
+
+            // Return download link + script
+            const downloadUrl = `/downloads/${outputFilename}`;
+            res.json({ success: true, downloadUrl, script });
+
+        } catch (innerError) {
+            // Clean up resources on error
+            if (assistantId) {
+                try {
+                    await openai.beta.assistants.del(assistantId);
+                } catch (e) { /* ignore */ }
+            }
+            if (threadId) {
+                try {
+                    await openai.beta.threads.del(threadId);
+                } catch (e) { /* ignore */ }
+            }
+            throw innerError; // Re-throw to outer catch
+        }
 
     } catch (error) {
         console.error('Error processing file:', error);
