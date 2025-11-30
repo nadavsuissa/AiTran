@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const OpenAI = require('openai');
 const { v4: uuidv4 } = require('uuid');
+const { extractText } = require('./utils/textExtractor');
 
 // Ensure upload and download directories exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -22,10 +23,10 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const gptModel = process.env.OPENAI_GPT_MODEL || 'gpt-4.1-mini';
+const gptModel = process.env.OPENAI_GPT_MODEL || 'gpt-4o-mini';
 const ttsVoice = process.env.OPENAI_TTS_VOICE || 'alloy';
-const lectureInstructions = `You are a top-tier Hebrew lecturer. Read the attached document, identify each section's core ideas, 
-and craft a concise yet rich lecture script entirely in Hebrew. Use clear pedagogy, smooth transitions, 
+const lectureInstructions = `You are a top-tier Hebrew lecturer. Read the provided document text, identify each section's core ideas,
+and craft a concise yet rich lecture script entirely in Hebrew. Use clear pedagogy, smooth transitions,
 and mention practical examples when the source allows it. Output ONLY the Hebrew lecture text without introductions in other languages.`;
 
 // OpenAI Setup
@@ -55,8 +56,6 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-// Removed extractResponsePayload function as it's no longer needed
-
 // Routes
 app.post('/api/process', upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -66,7 +65,6 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
     const filePath = req.file.path;
     const outputFilename = `${uuidv4()}.mp3`;
     const outputPath = path.join(__dirname, 'downloads', outputFilename);
-    let uploadedFileId = null;
 
     const cleanupLocal = () => {
         try {
@@ -84,133 +82,53 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
             throw new Error(`Uploaded file not found at: ${filePath}`);
         }
 
-        console.log('Uploading file to OpenAI for direct analysis...');
-        const uploadedFile = await openai.files.create({
-            file: fs.createReadStream(filePath),
-            purpose: 'assistants',
-        });
-        uploadedFileId = uploadedFile.id;
+        console.log('Extracting text from uploaded document...');
+        const extractedText = await extractText(filePath);
 
-        console.log('Creating assistant and thread for document analysis...');
-        let assistantId = null;
-        let threadId = null;
-
-        try {
-            const assistant = await openai.beta.assistants.create({
-                name: 'Document Lecturer',
-                instructions: lectureInstructions,
-                model: gptModel,
-                tools: [{ type: 'file_search' }],
-            });
-            assistantId = assistant.id;
-
-            const thread = await openai.beta.threads.create();
-            threadId = thread.id;
-
-            await openai.beta.threads.messages.create(threadId, {
-                role: 'user',
-                content: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד.',
-                attachments: [
-                    {
-                        file_id: uploadedFile.id,
-                        tools: [{ type: 'file_search' }],
-                    },
-                ],
-            });
-
-            const run = await openai.beta.threads.runs.create(threadId, {
-                assistant_id: assistantId,
-            });
-
-            // Wait for the run to complete
-            let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-            let attempts = 0;
-            const maxAttempts = 120; // 2 minutes timeout
-
-            while (runStatus.status !== 'completed' && attempts < maxAttempts) {
-                if (runStatus.status === 'failed' || runStatus.status === 'cancelled' || runStatus.status === 'expired') {
-                    throw new Error(`Assistant run ${runStatus.status}: ${runStatus.last_error?.message || 'Unknown error'}`);
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-                attempts++;
-            }
-
-            if (attempts >= maxAttempts) {
-                throw new Error('Assistant run timed out after 2 minutes');
-            }
-
-            const messages = await openai.beta.threads.messages.list(threadId);
-            const script = messages.data[0].content[0].text.value;
-
-            if (!script) {
-                throw new Error('OpenAI did not return a Hebrew script.');
-            }
-
-            // Clean up assistant and thread
-            if (assistantId) {
-                try {
-                    await openai.beta.assistants.del(assistantId);
-                } catch (cleanupError) {
-                    console.error('Failed to cleanup assistant:', cleanupError);
-                }
-            }
-            if (threadId) {
-                try {
-                    await openai.beta.threads.del(threadId);
-                } catch (cleanupError) {
-                    console.error('Failed to cleanup thread:', cleanupError);
-                }
-            }
-
-            console.log('Generating audio via TTS API...');
-            const mp3 = await openai.audio.speech.create({
-                model: 'tts-1',
-                voice: ttsVoice,
-                input: script,
-            });
-
-            const buffer = Buffer.from(await mp3.arrayBuffer());
-            await fs.promises.writeFile(outputPath, buffer);
-
-            cleanupLocal();
-            if (uploadedFileId) {
-                try {
-                    await openai.files.delete(uploadedFileId);
-                } catch (delError) {
-                    console.error('Failed to delete OpenAI file:', delError);
-                }
-            }
-
-            // Return download link + script
-            const downloadUrl = `/downloads/${outputFilename}`;
-            res.json({ success: true, downloadUrl, script });
-
-        } catch (innerError) {
-            // Clean up resources on error
-            if (assistantId) {
-                try {
-                    await openai.beta.assistants.del(assistantId);
-                } catch (e) { /* ignore */ }
-            }
-            if (threadId) {
-                try {
-                    await openai.beta.threads.del(threadId);
-                } catch (e) { /* ignore */ }
-            }
-            throw innerError; // Re-throw to outer catch
+        if (!extractedText || extractedText.trim().length === 0) {
+            throw new Error('Could not extract text from file.');
         }
+
+        console.log('Creating Hebrew lecture script via ChatGPT...');
+        const completion = await openai.chat.completions.create({
+            model: gptModel,
+            messages: [
+                {
+                    role: 'system',
+                    content: lectureInstructions,
+                },
+                {
+                    role: 'user',
+                    content: extractedText.substring(0, 120000), // safety limit
+                },
+            ],
+        });
+
+        const script = completion.choices[0].message.content;
+
+        if (!script) {
+            throw new Error('OpenAI did not return a Hebrew script.');
+        }
+
+        console.log('Generating audio via TTS API...');
+        const mp3 = await openai.audio.speech.create({
+            model: 'tts-1',
+            voice: ttsVoice,
+            input: script,
+        });
+
+        const buffer = Buffer.from(await mp3.arrayBuffer());
+        await fs.promises.writeFile(outputPath, buffer);
+
+        cleanupLocal();
+
+        // Return download link + script
+        const downloadUrl = `/downloads/${outputFilename}`;
+        res.json({ success: true, downloadUrl, script });
 
     } catch (error) {
         console.error('Error processing file:', error);
         cleanupLocal();
-        if (uploadedFileId) {
-            try {
-                await openai.files.delete(uploadedFileId);
-            } catch (delError) {
-                console.error('Failed to delete OpenAI file:', delError);
-            }
-        }
         res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
 });
