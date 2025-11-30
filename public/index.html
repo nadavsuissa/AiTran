@@ -17,12 +17,41 @@
         <div class="shape shape-2"></div>
     </div>
 
-    <nav class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-wave-square"></i>
-            <span>Lector</span>
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fa-solid fa-wave-square"></i>
+                <span>Lector</span>
+            </div>
+            
+            <nav class="nav-links">
+                <a href="#home" class="nav-link active">בית</a>
+                <a href="#features" class="nav-link">יכולות</a>
+                <a href="#pricing" class="nav-link">מחירים</a>
+                <a href="#about" class="nav-link">אודות</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button class="nav-btn secondary">התחבר</button>
+                <button class="nav-btn primary">התחל חינם</button>
+            </div>
+
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fa-solid fa-bars"></i>
+            </button>
         </div>
-    </nav>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#home" class="mobile-nav-link">בית</a>
+            <a href="#features" class="mobile-nav-link">יכולות</a>
+            <a href="#pricing" class="mobile-nav-link">מחירים</a>
+            <a href="#about" class="mobile-nav-link">אודות</a>
+            <div class="mobile-nav-actions">
+                <button class="nav-btn secondary">התחבר</button>
+                <button class="nav-btn primary">התחל חינם</button>
+            </div>
+        </div>
+    </header>
 
     <main class="main-container">
         <div class="hero">
@@ -98,8 +127,82 @@
         </div>
     </main>
 
-    <footer>
-        <p>© 2025 Lector AI. כל הזכויות שמורות.</p>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section brand-section">
+                <div class="footer-logo">
+                    <i class="fa-solid fa-wave-square"></i>
+                    <span>Lector</span>
+                </div>
+                <p class="footer-description">
+                    הפוך מסמכים להרצאות שמע באיכות גבוהה באמצעות טכנולוגיית AI מתקדמת
+                </p>
+                <div class="social-links">
+                    <a href="#" class="social-link" aria-label="Facebook">
+                        <i class="fa-brands fa-facebook"></i>
+                    </a>
+                    <a href="#" class="social-link" aria-label="Twitter">
+                        <i class="fa-brands fa-twitter"></i>
+                    </a>
+                    <a href="#" class="social-link" aria-label="LinkedIn">
+                        <i class="fa-brands fa-linkedin"></i>
+                    </a>
+                    <a href="#" class="social-link" aria-label="Instagram">
+                        <i class="fa-brands fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-section">
+                <h3 class="footer-title">מוצר</h3>
+                <ul class="footer-links">
+                    <li><a href="#features">יכולות</a></li>
+                    <li><a href="#pricing">מחירים</a></li>
+                    <li><a href="#demo">הדגמה</a></li>
+                    <li><a href="#api">API למפתחים</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h3 class="footer-title">חברה</h3>
+                <ul class="footer-links">
+                    <li><a href="#about">אודות</a></li>
+                    <li><a href="#blog">בלוג</a></li>
+                    <li><a href="#careers">קריירה</a></li>
+                    <li><a href="#press">עיתונות</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h3 class="footer-title">תמיכה</h3>
+                <ul class="footer-links">
+                    <li><a href="#help">מרכז עזרה</a></li>
+                    <li><a href="#contact">צור קשר</a></li>
+                    <li><a href="#status">מצב השירות</a></li>
+                    <li><a href="#privacy">פרטיות</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h3 class="footer-title">הישאר מעודכן</h3>
+                <p class="newsletter-text">קבל עדכונים על תכונות חדשות וטיפים</p>
+                <form class="newsletter-form">
+                    <input type="email" placeholder="הכנס אימייל" class="newsletter-input">
+                    <button type="submit" class="newsletter-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>© 2025 Lector AI. כל הזכויות שמורות.</p>
+            <div class="footer-bottom-links">
+                <a href="#terms">תנאי שימוש</a>
+                <a href="#privacy">מדיניות פרטיות</a>
+                <a href="#cookies">עוגיות</a>
+            </div>
+        </div>
     </footer>
 
     <script src="script.js"></script>
