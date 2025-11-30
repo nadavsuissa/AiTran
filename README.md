@@ -4,7 +4,7 @@ This Node.js application allows users to upload documents (PDF, DOCX, PPTX, XLSX
 
 ## Features
 
--   **File Support**: Word (DOCX), PowerPoint (PPTX), Excel (XLSX). PDF support coming soon.
+-   **File Support**: PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX).
 -   **AI Analysis**: Sends the original file to OpenAI's Responses API (GPT-4.1 family) so the model can interpret the content itself—no manual parsing required.
 -   **Hebrew Audio**: Requests an MP3 narration (Hebrew) from the same API call, producing both script + audio in one shot.
 -   **Download**: Users can listen to or download the generated lecture.

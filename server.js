@@ -6,7 +6,8 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const OpenAI = require('openai');
 const { v4: uuidv4 } = require('uuid');
-const { extractText } = require('./utils/textExtractor');
+// Removed extractText import as we are using OpenAI Responses API for file analysis
+// const { extractText } = require('./utils/textExtractor');
 
 // Ensure upload and download directories exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -23,7 +24,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const gptModel = process.env.OPENAI_GPT_MODEL || 'gpt-4o-mini';
+const gptModel = process.env.OPENAI_GPT_MODEL || 'gpt-5.1';
 const ttsVoice = process.env.OPENAI_TTS_VOICE || 'alloy';
 const lectureInstructions = `You are a top-tier Hebrew lecturer. Read the provided document text, identify each section's core ideas,
 and craft a concise yet rich lecture script entirely in Hebrew. Use clear pedagogy, smooth transitions,
@@ -82,32 +83,37 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
             throw new Error(`Uploaded file not found at: ${filePath}`);
         }
 
-        console.log('Extracting text from uploaded document...');
-        const extractedText = await extractText(filePath);
+        console.log('Uploading file to OpenAI for direct analysis...');
+        const uploadedFile = await openai.files.create({
+            file: fs.createReadStream(filePath),
+            purpose: 'user_data',
+        });
 
-        if (!extractedText || extractedText.trim().length === 0) {
-            throw new Error('Could not extract text from file.');
-        }
-
-        console.log('Creating Hebrew lecture script via ChatGPT...');
-        const completion = await openai.chat.completions.create({
+        console.log('Creating analysis via Responses API...');
+        // Note: Responses API does not yet support audio output directly, so we request text first.
+        const response = await openai.responses.create({
             model: gptModel,
-            messages: [
-                {
-                    role: 'system',
-                    content: lectureInstructions,
-                },
+            input: [
                 {
                     role: 'user',
-                    content: extractedText.substring(0, 120000), // safety limit
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד. ההרצאה צריכה להיות מרתקת ומלמדת.'
+                        },
+                        {
+                            type: 'input_file',
+                            file_id: uploadedFile.id,
+                        },
+                    ],
                 },
             ],
         });
 
-        const script = completion.choices[0].message.content;
+        const script = response.output_text; // Using helper property as per docs
 
         if (!script) {
-            throw new Error('OpenAI did not return a Hebrew script.');
+            throw new Error('OpenAI did not return a script from Responses API.');
         }
 
         console.log('Generating audio via TTS API...');
@@ -119,6 +125,12 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
 
         const buffer = Buffer.from(await mp3.arrayBuffer());
         await fs.promises.writeFile(outputPath, buffer);
+
+        // Cleanup OpenAI file if possible/needed (optional but good practice)
+        // Note: Responses API might persist files differently, but usually we delete user_data after use if not needed.
+        // However, docs don't strictly mandate deletion for Responses API usage immediately.
+        // We'll leave it for now or delete it if we want to be clean.
+        // await openai.files.del(uploadedFile.id).catch(() => {}); 
 
         cleanupLocal();
 
