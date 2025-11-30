@@ -45,11 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFileSelect(file) {
         // Validate file type (basic check)
-        const validTypes = ['.pdf', '.docx', '.pptx', '.xlsx', '.xls', '.ppt'];
+        const validTypes = ['.docx', '.pptx', '.xlsx', '.xls', '.ppt'];
         const ext = '.' + file.name.split('.').pop().toLowerCase();
-        
+
         if (!validTypes.includes(ext)) {
-            alert('Please upload a valid document file (PDF, Word, PowerPoint, Excel).');
+            alert('Please upload a valid document file (Word, PowerPoint, Excel). PDF support coming soon.');
             return;
         }
 
