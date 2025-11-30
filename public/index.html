@@ -3,39 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Lecture Generator</title>
+    <title>LecturAI - Document to Audio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>AI Lecture Generator</h1>
-        <p>Upload a file (PDF, DOCX, PPTX, XLSX) to generate a Hebrew audio lecture.</p>
-        
-        <form id="uploadForm">
-            <div class="file-input-wrapper">
-                <input type="file" id="fileInput" name="file" accept=".pdf,.docx,.pptx,.xlsx,.xls,.ppt" required>
+
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-brain"></i> LecturAI
+        </div>
+        <!-- Optional links could go here -->
+    </nav>
+
+    <main class="hero-section">
+        <div class="content-card">
+            <header class="hero-header">
+                <h1>Turn Documents into Audio Lectures</h1>
+                <p>Upload your study materials (PDF, DOCX, PPTX, XLSX) and let our AI craft a personalized Hebrew audio lesson for you.</p>
+            </header>
+
+            <div class="upload-container" id="drop-zone">
+                <input type="file" id="fileInput" name="file" accept=".pdf,.docx,.pptx,.xlsx,.xls,.ppt" hidden>
+                <div class="upload-icon">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <h3>Drag & Drop your file here</h3>
+                <p>or <span class="browse-btn">browse files</span></p>
+                <p class="file-types">Supports: PDF, Word, PowerPoint, Excel</p>
+                <div id="file-info" class="file-info hidden">
+                    <i class="fa-regular fa-file-lines"></i>
+                    <span id="filename">filename.pdf</span>
+                    <i class="fa-solid fa-xmark remove-file" id="removeFileBtn"></i>
+                </div>
             </div>
-            <button type="submit" id="submitBtn">Generate Lecture</button>
-        </form>
 
-        <div id="status" class="hidden">
-            <p id="statusText">Processing...</p>
-            <div class="loader"></div>
+            <button id="generateBtn" class="cta-button" disabled>
+                <span class="btn-text">Generate Audio Lecture</span>
+                <span class="btn-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+            </button>
+
+            <div id="status-container" class="status-container hidden">
+                <div class="loader-ring"></div>
+                <p id="status-text">Analyzing document...</p>
+            </div>
         </div>
 
-        <div id="result" class="hidden">
-            <h2>Your Lecture is Ready!</h2>
-            <audio id="audioPlayer" controls></audio>
-            <br>
-            <a id="downloadLink" href="#" class="btn" download="lecture.mp3">Download Audio</a>
+        <!-- Result Section -->
+        <div id="result-section" class="result-card hidden">
+            <div class="result-header">
+                <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+                <h2>Lecture Ready!</h2>
+            </div>
             
-            <details>
-                <summary>View Script</summary>
-                <p id="scriptText" dir="rtl"></p>
-            </details>
+            <div class="audio-wrapper">
+                <p class="label">Listen now</p>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+
+            <div class="action-buttons">
+                <a id="downloadLink" href="#" class="secondary-button" download="lecture.mp3">
+                    <i class="fa-solid fa-download"></i> Download MP3
+                </a>
+                <button class="text-button" id="toggleScriptBtn">
+                    <i class="fa-solid fa-align-right"></i> View Script
+                </button>
+            </div>
+
+            <div id="scriptContainer" class="script-container hidden">
+                <h3>Hebrew Transcript</h3>
+                <div class="script-content" id="scriptText" dir="rtl"></div>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 LecturAI. Powered by OpenAI.</p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
-
