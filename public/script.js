@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!validTypes.includes(ext)) {
-            alert('Please upload a valid document file (PDF, Word, PowerPoint, Excel).');
+            alert('נא להעלות קובץ תקין (PDF, Word, PowerPoint, Excel).');
             return;
         }
 
@@ -57,10 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
         filenameSpan.textContent = file.name;
         
         // Update UI
+        dropZone.querySelector('.icon-container').classList.add('hidden');
         dropZone.querySelector('h3').classList.add('hidden');
-        dropZone.querySelector('p').classList.add('hidden');
-        dropZone.querySelector('.file-types').classList.add('hidden');
-        dropZone.querySelector('.upload-icon').classList.add('hidden');
+        dropZone.querySelector('.supported-files').classList.add('hidden');
         
         fileInfo.classList.remove('hidden');
         generateBtn.disabled = false;
@@ -73,10 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Reset UI
         fileInfo.classList.add('hidden');
+        dropZone.querySelector('.icon-container').classList.remove('hidden');
         dropZone.querySelector('h3').classList.remove('hidden');
-        dropZone.querySelector('p').classList.remove('hidden');
-        dropZone.querySelector('.file-types').classList.remove('hidden');
-        dropZone.querySelector('.upload-icon').classList.remove('hidden');
+        dropZone.querySelector('.supported-files').classList.remove('hidden');
         generateBtn.disabled = true;
     });
 
@@ -96,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', currentFile);
 
         try {
-            statusText.textContent = "Uploading file...";
+            statusText.textContent = "מעלה את הקובץ...";
             
             const response = await fetch('/api/process', {
                 method: 'POST',
@@ -108,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.error || 'Processing failed');
             }
 
-            statusText.textContent = "Processing with AI (this might take a moment)...";
+            statusText.textContent = "יוצר הרצאה (זה עשוי לקחת מעט זמן)...";
             const data = await response.json();
 
             // Success UI
@@ -117,16 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error(error);
-            statusText.textContent = `Error: ${error.message}`;
+            statusText.textContent = `שגיאה: ${error.message}`;
             statusText.style.color = "#ef4444";
-            // Re-enable button after a delay or offer retry?
+            document.querySelector('.loader').classList.add('hidden');
+            
             setTimeout(() => {
                 generateBtn.classList.remove('hidden');
                 generateBtn.disabled = false;
                 statusText.style.color = "";
-                statusText.textContent = "Analyzing document...";
+                statusText.textContent = "מעבד את הקובץ...";
+                document.querySelector('.loader').classList.remove('hidden');
                 statusContainer.classList.add('hidden');
-            }, 3000);
+            }, 4000);
         }
     });
 
@@ -143,12 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set Script
         scriptText.textContent = data.script;
 
-        // Reset Generate Button for next time?
+        // Reset Generate Button for next time
         generateBtn.classList.remove('hidden');
-        generateBtn.textContent = "Generate Another";
+        generateBtn.querySelector('span').textContent = "צור הרצאה חדשה";
         generateBtn.disabled = false;
-        // Keep the current file selected in case they want to re-run? 
-        // Usually better to let them upload new, but we'll leave the input state as is.
     }
 
     // --- Script Toggle ---
@@ -156,8 +154,15 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleScriptBtn.addEventListener('click', () => {
         scriptContainer.classList.toggle('hidden');
         const isHidden = scriptContainer.classList.contains('hidden');
-        toggleScriptBtn.innerHTML = isHidden 
-            ? '<i class="fa-solid fa-align-right"></i> View Script' 
-            : '<i class="fa-solid fa-chevron-up"></i> Hide Script';
+        const span = toggleScriptBtn.querySelector('span');
+        const icon = toggleScriptBtn.querySelector('i');
+        
+        if (isHidden) {
+            span.textContent = 'הצג תמלול';
+            icon.className = 'fa-solid fa-align-right';
+        } else {
+            span.textContent = 'הסתר תמלול';
+            icon.className = 'fa-solid fa-chevron-up';
+        }
     });
 });

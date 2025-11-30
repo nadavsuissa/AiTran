@@ -1,87 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LecturAI - Document to Audio</title>
+    <title>Lector - הפוך מסמכים להרצאות שמע</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
     <nav class="navbar">
         <div class="logo">
-            <i class="fa-solid fa-brain"></i> LecturAI
+            <i class="fa-solid fa-wave-square"></i>
+            <span>Lector</span>
         </div>
-        <!-- Optional links could go here -->
     </nav>
 
-    <main class="hero-section">
-        <div class="content-card">
-            <header class="hero-header">
-                <h1>Turn Documents into Audio Lectures</h1>
-                <p>Upload your study materials (PDF, DOCX, PPTX, XLSX) and let our AI craft a personalized Hebrew audio lesson for you.</p>
-            </header>
+    <main class="main-container">
+        <div class="hero">
+            <h1>הפוך כל מסמך להרצאה מרתקת</h1>
+            <p class="subtitle">העלה סיכומים, מאמרים או מצגות וקבל מיד פרק פודקאסט אישי בעברית, מופק על ידי בינה מלאכותית.</p>
+        </div>
 
-            <div class="upload-container" id="drop-zone">
+        <div class="card upload-card">
+            <div class="upload-area" id="drop-zone">
                 <input type="file" id="fileInput" name="file" accept=".pdf,.docx,.pptx,.xlsx,.xls,.ppt" hidden>
-                <div class="upload-icon">
+                <div class="icon-container">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
-                <h3>Drag & Drop your file here</h3>
-                <p>or <span class="browse-btn">browse files</span></p>
-                <p class="file-types">Supports: PDF, Word, PowerPoint, Excel</p>
+                <h3>גרור קובץ לכאן או לחץ לבחירה</h3>
+                <p class="supported-files">נתמך: PDF, Word, PowerPoint, Excel</p>
+                
                 <div id="file-info" class="file-info hidden">
-                    <i class="fa-regular fa-file-lines"></i>
-                    <span id="filename">filename.pdf</span>
-                    <i class="fa-solid fa-xmark remove-file" id="removeFileBtn"></i>
+                    <div class="file-details">
+                        <i class="fa-regular fa-file-lines"></i>
+                        <span id="filename">filename.pdf</span>
+                    </div>
+                    <button class="icon-btn remove-file" id="removeFileBtn" title="הסר קובץ">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
 
-            <button id="generateBtn" class="cta-button" disabled>
-                <span class="btn-text">Generate Audio Lecture</span>
-                <span class="btn-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+            <button id="generateBtn" class="primary-btn" disabled>
+                <span>צור הרצאה</span>
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
             </button>
 
             <div id="status-container" class="status-container hidden">
-                <div class="loader-ring"></div>
-                <p id="status-text">Analyzing document...</p>
+                <div class="loader">
+                    <svg viewBox="0 0 80 80">
+                        <circle id="test" cx="40" cy="40" r="32"></circle>
+                    </svg>
+                </div>
+                <div class="status-text-wrapper">
+                    <p id="status-text">מעבד את הקובץ...</p>
+                    <span class="sub-status">זה עשוי לקחת דקה או שתיים</span>
+                </div>
             </div>
         </div>
 
-        <!-- Result Section -->
-        <div id="result-section" class="result-card hidden">
+        <div id="result-section" class="card result-card hidden">
             <div class="result-header">
-                <div class="success-icon"><i class="fa-solid fa-check"></i></div>
-                <h2>Lecture Ready!</h2>
+                <div class="success-badge">
+                    <i class="fa-solid fa-check"></i>
+                    <span>ההרצאה מוכנה!</span>
+                </div>
             </div>
             
-            <div class="audio-wrapper">
-                <p class="label">Listen now</p>
+            <div class="audio-player-wrapper">
                 <audio id="audioPlayer" controls></audio>
             </div>
 
-            <div class="action-buttons">
-                <a id="downloadLink" href="#" class="secondary-button" download="lecture.mp3">
-                    <i class="fa-solid fa-download"></i> Download MP3
+            <div class="actions">
+                <a id="downloadLink" href="#" class="action-btn download-btn" download="lecture.mp3">
+                    <i class="fa-solid fa-download"></i>
+                    <span>הורד קובץ MP3</span>
                 </a>
-                <button class="text-button" id="toggleScriptBtn">
-                    <i class="fa-solid fa-align-right"></i> View Script
+                <button class="action-btn script-btn" id="toggleScriptBtn">
+                    <i class="fa-solid fa-align-right"></i>
+                    <span>הצג תמלול</span>
                 </button>
             </div>
 
-            <div id="scriptContainer" class="script-container hidden">
-                <h3>Hebrew Transcript</h3>
-                <div class="script-content" id="scriptText" dir="rtl"></div>
+            <div id="scriptContainer" class="script-section hidden">
+                <h3>תמלול ההרצאה</h3>
+                <div class="script-content" id="scriptText"></div>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>&copy; 2025 LecturAI. Powered by OpenAI.</p>
+        <p>© 2025 Lector AI. כל הזכויות שמורות.</p>
     </footer>
 
     <script src="script.js"></script>
