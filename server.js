@@ -117,14 +117,26 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
         }
 
         console.log('Generating audio via TTS API...');
-        const mp3 = await openai.audio.speech.create({
-            model: 'tts-1',
-            voice: ttsVoice,
-            input: script,
-        });
+        // TTS API has a 4096 char limit. We need to split the script if it's too long.
+        // Simple split by length, but ideally split by sentence/paragraph.
+        const maxChunkSize = 4000;
+        const chunks = [];
+        for (let i = 0; i < script.length; i += maxChunkSize) {
+            chunks.push(script.substring(i, i + maxChunkSize));
+        }
 
-        const buffer = Buffer.from(await mp3.arrayBuffer());
-        await fs.promises.writeFile(outputPath, buffer);
+        const audioBuffers = [];
+        for (const chunk of chunks) {
+            const mp3 = await openai.audio.speech.create({
+                model: 'tts-1',
+                voice: ttsVoice,
+                input: chunk,
+            });
+            audioBuffers.push(Buffer.from(await mp3.arrayBuffer()));
+        }
+
+        const combinedBuffer = Buffer.concat(audioBuffers);
+        await fs.promises.writeFile(outputPath, combinedBuffer);
 
         // Cleanup OpenAI file if possible/needed (optional but good practice)
         // Note: Responses API might persist files differently, but usually we delete user_data after use if not needed.
