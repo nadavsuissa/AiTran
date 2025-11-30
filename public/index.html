@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Lecture Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Lecture Generator</h1>
+        <p>Upload a file (PDF, DOCX, PPTX, XLSX) to generate a Hebrew audio lecture.</p>
+        
+        <form id="uploadForm">
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" name="file" accept=".pdf,.docx,.pptx,.xlsx,.xls,.ppt" required>
+            </div>
+            <button type="submit" id="submitBtn">Generate Lecture</button>
+        </form>
+
+        <div id="status" class="hidden">
+            <p id="statusText">Processing...</p>
+            <div class="loader"></div>
+        </div>
+
+        <div id="result" class="hidden">
+            <h2>Your Lecture is Ready!</h2>
+            <audio id="audioPlayer" controls></audio>
+            <br>
+            <a id="downloadLink" href="#" class="btn" download="lecture.mp3">Download Audio</a>
+            
+            <details>
+                <summary>View Script</summary>
+                <p id="scriptText" dir="rtl"></p>
+            </details>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
+
