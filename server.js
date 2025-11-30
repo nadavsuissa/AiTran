@@ -25,10 +25,12 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 const gptModel = process.env.OPENAI_GPT_MODEL || 'gpt-5.1';
-const ttsVoice = process.env.OPENAI_TTS_VOICE || 'alloy';
+const ttsVoice = process.env.OPENAI_TTS_VOICE || 'onyx';
 const lectureInstructions = `You are a top-tier Hebrew lecturer. Read the provided document text, identify each section's core ideas,
 and craft a concise yet rich lecture script entirely in Hebrew. Use clear pedagogy, smooth transitions,
-and mention practical examples when the source allows it. Output ONLY the Hebrew lecture text without introductions in other languages.`;
+and mention practical examples when the source allows it. 
+IMPORTANT: Write in natural, flowing SPOKEN Hebrew (עברית מדוברת). Avoid overly formal or archaic language. Use phrasing that sounds natural when read aloud.
+Output ONLY the Hebrew lecture text without introductions in other languages.`;
 
 // OpenAI Setup
 const openai = new OpenAI({
@@ -128,7 +130,7 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
         const audioBuffers = [];
         for (const chunk of chunks) {
             const mp3 = await openai.audio.speech.create({
-                model: 'tts-1',
+                model: 'tts-1-hd',
                 voice: ttsVoice,
                 input: chunk,
             });
