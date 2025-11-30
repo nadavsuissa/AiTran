@@ -55,37 +55,7 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-/**
- * Recursively walks the Responses API output array and extracts text + audio.
- * @param {Array} outputs
- * @returns {{ script: string, audioBase64: string | null }}
- */
-function extractResponsePayload(outputs = []) {
-    let script = '';
-    let audioBase64 = null;
-
-    const recurse = (node) => {
-        if (!node) return;
-        if (Array.isArray(node)) {
-            node.forEach(recurse);
-            return;
-        }
-
-        if (node.type === 'output_text' && node.text) {
-            script += node.text;
-        } else if (node.type === 'text' && node.text) {
-            script += node.text;
-        } else if ((node.type === 'output_audio' || node.type === 'audio') && node.audio?.data) {
-            audioBase64 = node.audio.data;
-        }
-
-        if (node.content) recurse(node.content);
-    };
-
-    recurse(outputs);
-
-    return { script: script.trim(), audioBase64 };
-}
+// Removed extractResponsePayload function as it's no longer needed
 
 // Routes
 app.post('/api/process', upload.single('file'), async (req, res) => {
@@ -121,48 +91,73 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
         });
         uploadedFileId = uploadedFile.id;
 
-        console.log('Creating lecture (text + audio) via Responses API...');
-        const response = await openai.responses.create({
-            model: gptModel,
-            modalities: ['text', 'audio'],
-            audio: {
-                voice: ttsVoice,
-                format: 'mp3',
-            },
+        console.log('Creating assistant and thread for document analysis...');
+        const assistant = await openai.beta.assistants.create({
+            name: 'Document Lecturer',
             instructions: lectureInstructions,
-            input: [
+            model: gptModel,
+            tools: [{ type: 'file_search' }],
+        });
+
+        const thread = await openai.beta.threads.create();
+
+        await openai.beta.threads.messages.create(thread.id, {
+            role: 'user',
+            content: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד.',
+            attachments: [
                 {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'עבור על המסמך המצורף, זהה את הנושאים המרכזיים וכתוב הרצאה קולית בעברית בלבד.',
-                        },
-                        {
-                            type: 'input_file',
-                            file_id: uploadedFile.id,
-                        },
-                    ],
+                    file_id: uploadedFile.id,
+                    tools: [{ type: 'file_search' }],
                 },
             ],
         });
 
-        const { script, audioBase64 } = extractResponsePayload(response.output);
+        const run = await openai.beta.threads.runs.create(thread.id, {
+            assistant_id: assistant.id,
+        });
+
+        // Wait for the run to complete
+        let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        while (runStatus.status !== 'completed') {
+            if (runStatus.status === 'failed') {
+                throw new Error('Assistant run failed');
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        }
+
+        const messages = await openai.beta.threads.messages.list(thread.id);
+        const script = messages.data[0].content[0].text.value;
 
         if (!script) {
             throw new Error('OpenAI did not return a Hebrew script.');
         }
 
-        if (!audioBase64) {
-            throw new Error('OpenAI did not return audio data.');
+        // Clean up assistant and thread
+        try {
+            await openai.beta.assistants.del(assistant.id);
+            await openai.beta.threads.del(thread.id);
+        } catch (cleanupError) {
+            console.error('Failed to cleanup assistant/thread:', cleanupError);
         }
 
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
-        await fs.promises.writeFile(outputPath, audioBuffer);
+        console.log('Generating audio via TTS API...');
+        const mp3 = await openai.audio.speech.create({
+            model: 'tts-1',
+            voice: ttsVoice,
+            input: script,
+        });
+
+        const buffer = Buffer.from(await mp3.arrayBuffer());
+        await fs.promises.writeFile(outputPath, buffer);
 
         cleanupLocal();
         if (uploadedFileId) {
-            openai.files.del(uploadedFileId).catch(() => {});
+            try {
+                await openai.files.delete(uploadedFileId);
+            } catch (delError) {
+                console.error('Failed to delete OpenAI file:', delError);
+            }
         }
 
         // Return download link + script
@@ -173,7 +168,11 @@ app.post('/api/process', upload.single('file'), async (req, res) => {
         console.error('Error processing file:', error);
         cleanupLocal();
         if (uploadedFileId) {
-            openai.files.del(uploadedFileId).catch(() => {});
+            try {
+                await openai.files.delete(uploadedFileId);
+            } catch (delError) {
+                console.error('Failed to delete OpenAI file:', delError);
+            }
         }
         res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
